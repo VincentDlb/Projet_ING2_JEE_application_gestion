@@ -87,6 +87,7 @@ Assurez-vous d'avoir installé les outils suivants :
 1.  Créer une base de données MySQL vide.
 2.  Importer le script SQL **`Base_SQL_Projet.sql`** pour créer les tables et peupler les données initiales.
 3.  Modifier le fichier de configuration **`resources/hibernate.cfg.xml`** pour y inclure les identifiants de connexion MySQL corrects (URL, utilisateur, mot de passe).
+4.  Pour une première connection en tant qu'admin : il faut effectuer un Run As pour classe HashGenerator.java (/ProjetJEE/src/main/java/com/rsv/util/HashGenerator.java)  en tant que Java Application et récupérer dans la console le mot de passe "hashé" généré dans la console, puis l'importer et le remplacer dans la base de donnée sur MySQL (ligne 270) : SET password='MDP_Hashé' 
 
 ### 3. Installation des Dépendances et Build
 
