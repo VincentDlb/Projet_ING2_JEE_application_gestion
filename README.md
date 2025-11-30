@@ -122,9 +122,14 @@ Validation : Validation des données côté serveur pour prévenir les injection
 
 ##  Auteurs
 Ce projet a été développé par l'équipe suivante :
-```
-David, Riyad, Yassir, Vincent, Ahmed, Rayane
-```
 
+- **AHMED AISSAOUI**
+- **YASSIR EL JARRARI**
+- **RIYAD ZALEGH**
+- **DAVID LE MER**
+- **RAYANE SAIGHI**
+- **VINCENT DELB**
+
+**Merci de votre lecture ! ✨**
 
 
