@@ -94,4 +94,37 @@ Depuis la racine du projet, utilisez Maven pour nettoyer et construire le projet
 
 ```bash
 mvn clean install
+```
+
+Cette commande télécharge les dépendances nécessaires et génère le fichier WAR (.war) de l'application dans le répertoire target/.
+
+### 4. Déploiement
+Copier le fichier .war généré dans le répertoire webapps/ de votre installation Tomcat.
+
+Démarrer (ou redémarrer) le serveur Tomcat.
+
+Accéder à l’application via : http://localhost:8080/ProjetJEE/
+
+---
+
+##  Sécurité
+Le projet intègre plusieurs mécanismes de sécurité essentiels pour une application d'entreprise :
+
+Gestion de Session : Sécurité stricte autour des sessions utilisateur pour prévenir l'usurpation.
+
+Filtre d'Accès (AuthFilter) : Utilisation d'un filtre Servlet pour interdire l'accès aux ressources sensibles si l'utilisateur n'est pas authentifié.
+
+Isolation des Vues : Les pages JSP critiques et les fichiers de configuration sont placés dans le répertoire sécurisé WEB-INF/, empêchant l'accès direct via l'URL.
+
+Validation : Validation des données côté serveur pour prévenir les injections de formulaires.
+
+---
+
+##  Auteurs
+Ce projet a été développé par l'équipe suivante :
+```
+David, Riyad, Yassir, Vincent, Ahmed, Rayane
+```
+
+
 
