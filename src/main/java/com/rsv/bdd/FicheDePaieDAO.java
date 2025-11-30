@@ -1,231 +1,195 @@
 package com.rsv.bdd;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import com.rsv.model.FicheDePaie;
+import com.rsv.util.HibernateUtil;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import com.rsv.model.Employe;
-import com.rsv.model.FicheDePaie;
-
+/**
+ * DAO pour gérer les fiches de paie
+ */
 public class FicheDePaieDAO {
 
-	// CREATE : Ajouter une nouvelle fiche de paie
-	public static int ajouter(FicheDePaie fiche) throws SQLException {
-		String sql = "INSERT INTO fichedepaie (employeId, mois, annee, salaireBrut, bonus, deduction, numeroFiscal, "
-				+ "statutCadre, heureSupp, tauxHoraire, heureSemaine, heureDansLeMois, heureAbsences) "
-				+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    /**
+     * Liste toutes les fiches de paie
+     */
+    public List<FicheDePaie> listerToutes() {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            String hql = "FROM FicheDePaie ORDER BY annee DESC, mois DESC";
+            return session.createQuery(hql, FicheDePaie.class).list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
 
-		try (Connection c = DBUtil.getConnection();
-				PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-			ps.setInt(1, fiche.getEmployeId());
-			ps.setInt(2, fiche.getMois());
-			ps.setInt(3, fiche.getAnnee());
-			ps.setFloat(4, fiche.getSalaireBrut());
-			ps.setFloat(5, fiche.getBonus());
-			ps.setFloat(6, fiche.getDeduction());
-			ps.setLong(7, fiche.getNumeroFiscal());
-			ps.setBoolean(8, fiche.isStatutCadre());
-			ps.setFloat(9, fiche.getHeureSupp());
-			ps.setFloat(10, fiche.getTauxHoraire());
-			ps.setFloat(11, fiche.getHeureSemaine());
-			ps.setFloat(12, fiche.getHeureDansLeMois());
-			ps.setFloat(13, fiche.getHeureAbsences());
+    /**
+     * Alias pour listerToutes() - pour compatibilité avec RecalculerFichesServlet
+     */
+    public List<FicheDePaie> listerToutesLesFiches() {
+        return listerToutes();
+    }
 
-			int affectedRows = ps.executeUpdate();
+    /**
+     * Récupère une fiche par son ID
+     */
+    public FicheDePaie getFicheById(Integer id) {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            return session.get(FicheDePaie.class, id);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
 
-			if (affectedRows > 0) {
-				try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
-					if (generatedKeys.next()) {
-						return generatedKeys.getInt(1);
-					}
-				}
-			}
-		}
-		return 0;
-	}
+    /**
+     * Ajoute une nouvelle fiche
+     */
+    public boolean ajouterFiche(FicheDePaie fiche) {
+        Session session = null;
+        Transaction transaction = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+            
+            // Calculer automatiquement les cotisations et le net
+            fiche.calculerTout();
+            
+            session.persist(fiche);
+            
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+            System.err.println("ERREUR lors de l'ajout de la fiche : " + e.getMessage());
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
 
-	// READ : Récupérer une fiche de paie par ID
-	public static FicheDePaie ficheAvecId(int id) throws SQLException {
-		String sql = "SELECT * FROM fichedepaie WHERE id = ?";
-		FicheDePaie fiche = null;
+    /**
+     * Modifie une fiche existante
+     */
+    public boolean modifierFicheDePaie(FicheDePaie fiche) {
+        Session session = null;
+        Transaction transaction = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+            
+            // Recalculer automatiquement les cotisations et le net
+            fiche.calculerTout();
+            
+            session.merge(fiche);
+            
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+            System.err.println("ERREUR lors de la modification de la fiche : " + e.getMessage());
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
 
-		try (Connection c = DBUtil.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-			ps.setInt(1, id);
+    /**
+     * Supprime une fiche
+     */
+    public boolean supprimerFiche(Integer id) {
+        Session session = null;
+        Transaction transaction = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+            
+            FicheDePaie fiche = session.get(FicheDePaie.class, id);
+            if (fiche != null) {
+                session.remove(fiche);
+            }
+            
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
 
-			try (ResultSet rs = ps.executeQuery()) {
-				if (rs.next()) {
-					fiche = construireFicheDePaie(rs);
-				}
-			}
-		}
+    /**
+     * Récupère toutes les fiches d'un employé
+     */
+    public List<FicheDePaie> getFichesParEmploye(Integer employeId) {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            String hql = "FROM FicheDePaie WHERE employe.id = :employeId ORDER BY annee DESC, mois DESC";
+            Query<FicheDePaie> query = session.createQuery(hql, FicheDePaie.class);
+            query.setParameter("employeId", employeId);
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
 
-		return fiche;
-	}
-
-	// UPDATE : Modifier une fiche de paie existante
-	public static void modifier(FicheDePaie fiche) throws SQLException {
-		String sql = "UPDATE fichedepaie SET employeId = ?, mois = ?, annee = ?, salaireBrut = ?, bonus = ?, "
-				+ "deduction = ?, numeroFiscal = ?, statutCadre = ?, heureSupp = ?, tauxHoraire = ?, "
-				+ "heureSemaine = ?, heureDansLeMois = ?, heureAbsences = ? WHERE id = ?";
-
-		try (Connection c = DBUtil.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-			ps.setInt(1, fiche.getEmployeId());
-			ps.setInt(2, fiche.getMois());
-			ps.setInt(3, fiche.getAnnee());
-			ps.setFloat(4, fiche.getSalaireBrut());
-			ps.setFloat(5, fiche.getBonus());
-			ps.setFloat(6, fiche.getDeduction());
-			ps.setLong(7, fiche.getNumeroFiscal());
-			ps.setBoolean(8, fiche.isStatutCadre());
-			ps.setFloat(9, fiche.getHeureSupp());
-			ps.setFloat(10, fiche.getTauxHoraire());
-			ps.setFloat(11, fiche.getHeureSemaine());
-			ps.setFloat(12, fiche.getHeureDansLeMois());
-			ps.setFloat(13, fiche.getHeureAbsences());
-			ps.setInt(14, fiche.getId());
-
-			ps.executeUpdate();
-		}
-	}
-
-	// DELETE : Supprimer une fiche de paie
-	public static void supprimer(int id) throws SQLException {
-		String sql = "DELETE FROM fichedepaie WHERE id = ?";
-
-		try (Connection c = DBUtil.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-			ps.setInt(1, id);
-			ps.executeUpdate();
-		}
-	}
-
-	// LIST ALL : Lister toutes les fiches de paie
-	public static List<FicheDePaie> listerTous() throws SQLException {
-		String sql = "SELECT * FROM fichedepaie ORDER BY annee DESC, mois DESC";
-		List<FicheDePaie> fiches = new ArrayList<>();
-
-		try (Connection c = DBUtil.getConnection();
-				PreparedStatement ps = c.prepareStatement(sql);
-				ResultSet rs = ps.executeQuery()) {
-
-			while (rs.next()) {
-				FicheDePaie fiche = construireFicheDePaie(rs);
-				fiches.add(fiche);
-			}
-		}
-
-		return fiches;
-	}
-
-	// Lister les fiches de paie d'un employé
-	public static List<FicheDePaie> listerParEmploye(int employeId) throws SQLException {
-		String sql = "SELECT * FROM fichedepaie WHERE employeId = ? ORDER BY annee DESC, mois DESC";
-		List<FicheDePaie> fiches = new ArrayList<>();
-
-		try (Connection c = DBUtil.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-			ps.setInt(1, employeId);
-
-			try (ResultSet rs = ps.executeQuery()) {
-				while (rs.next()) {
-					FicheDePaie fiche = construireFicheDePaie(rs);
-					fiches.add(fiche);
-				}
-			}
-		}
-
-		return fiches;
-	}
-
-	// Lister les fiches de paie par période
-	public static List<FicheDePaie> listerParPeriode(int mois, int annee) throws SQLException {
-		String sql = "SELECT * FROM fichedepaie WHERE mois = ? AND annee = ? ORDER BY employeId";
-		List<FicheDePaie> fiches = new ArrayList<>();
-
-		try (Connection c = DBUtil.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-			ps.setInt(1, mois);
-			ps.setInt(2, annee);
-
-			try (ResultSet rs = ps.executeQuery()) {
-				while (rs.next()) {
-					FicheDePaie fiche = construireFicheDePaie(rs);
-					fiches.add(fiche);
-				}
-			}
-		}
-
-		return fiches;
-	}
-
-	// Rechercher une fiche de paie pour un employé à une période donnée
-	public static FicheDePaie rechercherParEmployeEtPeriode(int employeId, int mois, int annee) throws SQLException {
-		String sql = "SELECT * FROM fichedepaie WHERE employeId = ? AND mois = ? AND annee = ?";
-		FicheDePaie fiche = null;
-
-		try (Connection c = DBUtil.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-			ps.setInt(1, employeId);
-			ps.setInt(2, mois);
-			ps.setInt(3, annee);
-
-			try (ResultSet rs = ps.executeQuery()) {
-				if (rs.next()) {
-					fiche = construireFicheDePaie(rs);
-				}
-			}
-		}
-
-		return fiche;
-	}
-
-	// Rechercher les fiches de paie par année
-	public static List<FicheDePaie> listerParAnnee(int annee) throws SQLException {
-		String sql = "SELECT * FROM fichedepaie WHERE annee = ? ORDER BY mois DESC, employeId";
-		List<FicheDePaie> fiches = new ArrayList<>();
-
-		try (Connection c = DBUtil.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-			ps.setInt(1, annee);
-
-			try (ResultSet rs = ps.executeQuery()) {
-				while (rs.next()) {
-					FicheDePaie fiche = construireFicheDePaie(rs);
-					fiches.add(fiche);
-				}
-			}
-		}
-
-		return fiches;
-	}
-
-	// Méthode utilitaire pour construire un objet FicheDePaie depuis un ResultSet
-	private static FicheDePaie construireFicheDePaie(ResultSet rs) throws SQLException {
-		FicheDePaie fiche = new FicheDePaie(
-			rs.getInt("id"),
-			rs.getInt("employeId"),
-			rs.getInt("mois"),
-			rs.getInt("annee"),
-			rs.getFloat("salaireBrut"),
-			rs.getFloat("bonus"),
-			rs.getFloat("deduction"),
-			rs.getLong("numeroFiscal"),
-			rs.getBoolean("statutCadre"),
-			rs.getFloat("heureSupp"),
-			rs.getFloat("tauxHoraire"),
-			rs.getFloat("heureSemaine"),
-			rs.getFloat("heureDansLeMois"),
-			rs.getFloat("heureAbsences")
-		);
-
-		// Charger les informations de l'employé
-		try {
-			Employe employe = EmployeDAO.employeAvecId(fiche.getEmployeId());
-			fiche.setEmploye(employe);
-		} catch (SQLException e) {
-			// Si l'employé n'est pas trouvé, on laisse null
-			e.printStackTrace();
-		}
-
-		return fiche;
-	}
+    /**
+     * Récupère toutes les fiches d'une période donnée
+     */
+    public List<FicheDePaie> getFichesParPeriode(Integer mois, Integer annee) {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            String hql = "FROM FicheDePaie WHERE mois = :mois AND annee = :annee ORDER BY employe.nom";
+            Query<FicheDePaie> query = session.createQuery(hql, FicheDePaie.class);
+            query.setParameter("mois", mois);
+            query.setParameter("annee", annee);
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
 }

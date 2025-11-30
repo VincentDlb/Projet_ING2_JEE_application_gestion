@@ -1,234 +1,273 @@
 package com.rsv.model;
 
-import java.util.Objects;
+import jakarta.persistence.*;
 
+@Entity
+@Table(name = "fiche_de_paie")
 public class FicheDePaie {
-	private int id;
-	private int employeId; // Référence à l'employé
-	private Employe employe; // Objet employé (pour affichage)
-	private int mois; // 1-12
-	private int annee; // ex: 2025
-	private float salaireBrut;
-	private float bonus;
-	private float deduction;
-	private long numeroFiscal;
-	private boolean statutCadre;
-	private float heureSupp;
-	private float tauxHoraire;
-	private float heureSemaine;
-	private float heureDansLeMois;
-	private float heureAbsences;
 
-	// Constructeur complet avec ID (pour récupération depuis BD)
-	public FicheDePaie(int id, int employeId, int mois, int annee, float salaireBrut, float bonus, float deduction,
-			long numeroFiscal, boolean statutCadre, float heureSupp, float tauxHoraire, float heureSemaine,
-			float heureDansLeMois, float heureAbsences) {
-		this.id = id;
-		this.employeId = employeId;
-		this.mois = mois;
-		this.annee = annee;
-		this.salaireBrut = salaireBrut;
-		this.bonus = bonus;
-		this.deduction = deduction;
-		this.numeroFiscal = numeroFiscal;
-		this.statutCadre = statutCadre;
-		this.heureSupp = heureSupp;
-		this.tauxHoraire = tauxHoraire;
-		this.heureSemaine = heureSemaine;
-		this.heureDansLeMois = heureDansLeMois;
-		this.heureAbsences = heureAbsences;
-	}
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
 
-	// Constructeur sans ID (pour création)
-	public FicheDePaie(int employeId, int mois, int annee, float salaireBrut, float bonus, float deduction,
-			long numeroFiscal, boolean statutCadre, float heureSupp, float tauxHoraire, float heureSemaine,
-			float heureDansLeMois, float heureAbsences) {
-		this(0, employeId, mois, annee, salaireBrut, bonus, deduction, numeroFiscal, statutCadre, heureSupp,
-				tauxHoraire, heureSemaine, heureDansLeMois, heureAbsences);
-	}
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "employe_id", nullable = false)
+    private Employe employe;
 
-	// Ancien constructeur pour compatibilité (conservé pour ne pas casser le code existant)
-	public FicheDePaie(Employe employe, float salaireBrut, float bonus, float deduction, long numeroFiscal,
-			boolean statutCadre, float heureSupp, float tauxHoraire, float heureSemaine, float heureDansLeMois,
-			float heureAbsences) {
-		this(0, employe != null ? employe.getId() : 0, 1, 2025, salaireBrut, bonus, deduction, numeroFiscal,
-				statutCadre, heureSupp, tauxHoraire, heureSemaine, heureDansLeMois, heureAbsences);
-		this.employe = employe;
-	}
+    @Column(name = "mois", nullable = false)
+    private Integer mois;
 
-	// Méthode de calcul du salaire net : net = brut + bonus - deduction
-	public float calculerSalaireNet() {
-		return salaireBrut + bonus - deduction;
-	}
+    @Column(name = "annee", nullable = false)
+    private Integer annee;
 
-	// Getters et Setters
-	public int getId() {
-		return id;
-	}
+    @Column(name = "salaire_de_base", nullable = false)
+    private Double salaireDeBase;
 
-	public void setId(int id) {
-		this.id = id;
-	}
+    @Column(name = "primes")
+    private Double primes = 0.0;
 
-	public int getEmployeId() {
-		return employeId;
-	}
+    @Column(name = "deductions")
+    private Double deductions = 0.0;
+    
+    @Column(name = "heures_supp")
+    private Double heuresSupp = 0.0;
 
-	public void setEmployeId(int employeId) {
-		this.employeId = employeId;
-	}
+    @Column(name = "jours_absence")
+    private Integer joursAbsence = 0;
+    
+    // Nouvelles colonnes pour les cotisations sociales
+    @Column(name = "cotisation_secu")
+    private Double cotisationSecu = 0.0;
+    
+    @Column(name = "cotisation_vieillesse")
+    private Double cotisationVieillesse = 0.0;
+    
+    @Column(name = "cotisation_chomage")
+    private Double cotisationChomage = 0.0;
+    
+    @Column(name = "cotisation_retraite")
+    private Double cotisationRetraite = 0.0;
+    
+    @Column(name = "cotisation_csg")
+    private Double cotisationCSG = 0.0;
+    
+    @Column(name = "cotisation_crds")
+    private Double cotisationCRDS = 0.0;
 
-	public Employe getEmploye() {
-		return employe;
-	}
+    @Column(name = "net_a_payer", nullable = false)
+    private Double netAPayer;
 
-	public void setEmploye(Employe employe) {
-		this.employe = employe;
-		if (employe != null) {
-			this.employeId = employe.getId();
-		}
-	}
+    public FicheDePaie() {
+    }
 
-	public int getMois() {
-		return mois;
-	}
+    public FicheDePaie(Employe employe, Integer mois, Integer annee, Double salaireDeBase) {
+        this.employe = employe;
+        this.mois = mois;
+        this.annee = annee;
+        this.salaireDeBase = salaireDeBase;
+        calculerTout();
+    }
 
-	public void setMois(int mois) {
-		this.mois = mois;
-	}
+    public Integer getId() {
+        return id;
+    }
 
-	public int getAnnee() {
-		return annee;
-	}
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
-	public void setAnnee(int annee) {
-		this.annee = annee;
-	}
+    public Employe getEmploye() {
+        return employe;
+    }
 
-	public float getSalaireBrut() {
-		return salaireBrut;
-	}
+    public void setEmploye(Employe employe) {
+        this.employe = employe;
+    }
 
-	public void setSalaireBrut(float salaireBrut) {
-		this.salaireBrut = salaireBrut;
-	}
+    public Integer getMois() {
+        return mois;
+    }
 
-	public float getBonus() {
-		return bonus;
-	}
+    public void setMois(Integer mois) {
+        this.mois = mois;
+    }
 
-	public void setBonus(float bonus) {
-		this.bonus = bonus;
-	}
+    public Integer getAnnee() {
+        return annee;
+    }
 
-	public float getDeduction() {
-		return deduction;
-	}
+    public void setAnnee(Integer annee) {
+        this.annee = annee;
+    }
 
-	public void setDeduction(float deduction) {
-		this.deduction = deduction;
-	}
+    public Double getSalaireDeBase() {
+        return salaireDeBase;
+    }
 
-	public long getNumeroFiscal() {
-		return numeroFiscal;
-	}
+    public void setSalaireDeBase(Double salaireDeBase) {
+        this.salaireDeBase = salaireDeBase;
+    }
 
-	public void setNumeroFiscal(long numeroFiscal) {
-		this.numeroFiscal = numeroFiscal;
-	}
+    public Double getPrimes() {
+        return primes != null ? primes : 0.0;
+    }
 
-	public boolean isStatutCadre() {
-		return statutCadre;
-	}
+    public void setPrimes(Double primes) {
+        this.primes = primes != null ? primes : 0.0;
+    }
 
-	public void setStatutCadre(boolean statutCadre) {
-		this.statutCadre = statutCadre;
-	}
+    public Double getDeductions() {
+        return deductions != null ? deductions : 0.0;
+    }
 
-	public float getHeureSupp() {
-		return heureSupp;
-	}
+    public void setDeductions(Double deductions) {
+        this.deductions = deductions != null ? deductions : 0.0;
+    }
 
-	public void setHeureSupp(float heureSupp) {
-		this.heureSupp = heureSupp;
-	}
+    public Double getHeuresSupp() {
+        return heuresSupp;
+    }
 
-	public float getTauxHoraire() {
-		return tauxHoraire;
-	}
+    public void setHeuresSupp(Double heuresSupp) {
+        this.heuresSupp = heuresSupp;
+    }
 
-	public void setTauxHoraire(float tauxHoraire) {
-		this.tauxHoraire = tauxHoraire;
-	}
+    public Integer getJoursAbsence() {
+        return joursAbsence;
+    }
 
-	public float getHeureSemaine() {
-		return heureSemaine;
-	}
+    public void setJoursAbsence(Integer joursAbsence) {
+        this.joursAbsence = joursAbsence;
+    }
 
-	public void setHeureSemaine(float heureSemaine) {
-		this.heureSemaine = heureSemaine;
-	}
+    public Double getCotisationSecu() {
+        return cotisationSecu != null ? cotisationSecu : 0.0;
+    }
 
-	public float getHeureDansLeMois() {
-		return heureDansLeMois;
-	}
+    public void setCotisationSecu(Double cotisationSecu) {
+        this.cotisationSecu = cotisationSecu;
+    }
 
-	public void setHeureDansLeMois(float heureDansLeMois) {
-		this.heureDansLeMois = heureDansLeMois;
-	}
+    public Double getCotisationVieillesse() {
+        return cotisationVieillesse != null ? cotisationVieillesse : 0.0;
+    }
 
-	public float getHeureAbsences() {
-		return heureAbsences;
-	}
+    public void setCotisationVieillesse(Double cotisationVieillesse) {
+        this.cotisationVieillesse = cotisationVieillesse;
+    }
 
-	public void setHeureAbsences(float heureAbsences) {
-		this.heureAbsences = heureAbsences;
-	}
+    public Double getCotisationChomage() {
+        return cotisationChomage != null ? cotisationChomage : 0.0;
+    }
 
-	@Override
-	public int hashCode() {
-		return Objects.hash(annee, bonus, deduction, employeId, heureAbsences, heureDansLeMois, heureSemaine,
-				heureSupp, id, mois, numeroFiscal, salaireBrut, statutCadre, tauxHoraire);
-	}
+    public void setCotisationChomage(Double cotisationChomage) {
+        this.cotisationChomage = cotisationChomage;
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		FicheDePaie other = (FicheDePaie) obj;
-		return annee == other.annee && Float.floatToIntBits(bonus) == Float.floatToIntBits(other.bonus)
-				&& Float.floatToIntBits(deduction) == Float.floatToIntBits(other.deduction)
-				&& employeId == other.employeId
-				&& Float.floatToIntBits(heureAbsences) == Float.floatToIntBits(other.heureAbsences)
-				&& Float.floatToIntBits(heureDansLeMois) == Float.floatToIntBits(other.heureDansLeMois)
-				&& Float.floatToIntBits(heureSemaine) == Float.floatToIntBits(other.heureSemaine)
-				&& Float.floatToIntBits(heureSupp) == Float.floatToIntBits(other.heureSupp) && id == other.id
-				&& mois == other.mois && numeroFiscal == other.numeroFiscal
-				&& Float.floatToIntBits(salaireBrut) == Float.floatToIntBits(other.salaireBrut)
-				&& statutCadre == other.statutCadre
-				&& Float.floatToIntBits(tauxHoraire) == Float.floatToIntBits(other.tauxHoraire);
-	}
+    public Double getCotisationRetraite() {
+        return cotisationRetraite != null ? cotisationRetraite : 0.0;
+    }
 
-	@Override
-	public String toString() {
-		return "FicheDePaie [id=" + id + ", employeId=" + employeId + ", mois=" + mois + ", annee=" + annee
-				+ ", salaireBrut=" + salaireBrut + ", bonus=" + bonus + ", deduction=" + deduction + ", numeroFiscal="
-				+ numeroFiscal + ", statutCadre=" + statutCadre + ", heureSupp=" + heureSupp + ", tauxHoraire="
-				+ tauxHoraire + ", heureSemaine=" + heureSemaine + ", heureDansLeMois=" + heureDansLeMois
-				+ ", heureAbsences=" + heureAbsences + ", salaireNet=" + calculerSalaireNet() + "]";
-	}
+    public void setCotisationRetraite(Double cotisationRetraite) {
+        this.cotisationRetraite = cotisationRetraite;
+    }
 
-	// Méthode utilitaire pour obtenir le nom du mois
-	public String getNomMois() {
-		String[] nomsMois = { "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre",
-				"Octobre", "Novembre", "Décembre" };
-		if (mois >= 1 && mois <= 12) {
-			return nomsMois[mois - 1];
-		}
-		return "Mois inconnu";
-	}
+    public Double getCotisationCSG() {
+        return cotisationCSG != null ? cotisationCSG : 0.0;
+    }
+
+    public void setCotisationCSG(Double cotisationCSG) {
+        this.cotisationCSG = cotisationCSG;
+    }
+
+    public Double getCotisationCRDS() {
+        return cotisationCRDS != null ? cotisationCRDS : 0.0;
+    }
+
+    public void setCotisationCRDS(Double cotisationCRDS) {
+        this.cotisationCRDS = cotisationCRDS;
+    }
+
+    public Double getNetAPayer() {
+        return netAPayer;
+    }
+
+    public void setNetAPayer(Double netAPayer) {
+        this.netAPayer = netAPayer;
+    }
+
+    /**
+     * Calcule le salaire brut
+     */
+    public Double getSalaireBrut() {
+        double base = salaireDeBase != null ? salaireDeBase : 0.0;
+        double prime = primes != null ? primes : 0.0;
+        double heures = heuresSupp != null ? heuresSupp : 0.0;
+        return base + prime + heures;
+    }
+
+    /**
+     * Calcule le total des cotisations sociales
+     */
+    public Double getTotalCotisations() {
+        return getCotisationSecu() + getCotisationVieillesse() + 
+               getCotisationChomage() + getCotisationRetraite() + 
+               getCotisationCSG() + getCotisationCRDS();
+    }
+
+    /**
+     * Calcule la déduction pour absences
+     */
+    public Double getDeductionAbsence() {
+        if (joursAbsence != null && joursAbsence > 0 && salaireDeBase != null) {
+            return (salaireDeBase / 30.0) * joursAbsence;
+        }
+        return 0.0;
+    }
+
+    /**
+     * Calcule automatiquement toutes les cotisations et le net à payer
+     */
+    public void calculerTout() {
+        // Calcul du brut
+        double salaireBrut = getSalaireBrut();
+        
+        // Calcul des cotisations sociales (pourcentages réalistes)
+        this.cotisationSecu = salaireBrut * 0.0075;        // 0.75%
+        this.cotisationVieillesse = salaireBrut * 0.1145;  // 11.45%
+        this.cotisationChomage = salaireBrut * 0.024;      // 2.4%
+        this.cotisationRetraite = salaireBrut * 0.0787;    // 7.87%
+        this.cotisationCSG = salaireBrut * 0.092;          // 9.2%
+        this.cotisationCRDS = salaireBrut * 0.005;         // 0.5%
+        
+        // Calcul des déductions
+        double totalCotisations = getTotalCotisations();
+        double deductionsSupp = deductions != null ? deductions : 0.0;
+        double deductionAbsence = getDeductionAbsence();
+        
+        // Calcul du net à payer
+        this.netAPayer = salaireBrut - totalCotisations - deductionsSupp - deductionAbsence;
+        
+        // S'assurer que le net ne soit jamais négatif
+        if (this.netAPayer < 0) {
+            this.netAPayer = 0.0;
+        }
+    }
+
+    /**
+     * Alias de calculerTout() pour compatibilité avec l'ancien code
+     */
+    public void calculerNetAPayer() {
+        calculerTout();
+    }
+
+    @Override
+    public String toString() {
+        return "FicheDePaie{" +
+                "id=" + id +
+                ", mois=" + mois +
+                ", annee=" + annee +
+                ", netAPayer=" + netAPayer +
+                '}';
+    }
 }

@@ -1,293 +1,456 @@
 package com.rsv.bdd;
 
+import com.rsv.model.Projet;
+import com.rsv.model.Employe;
+import com.rsv.util.HibernateUtil;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 
-import java.sql.Connection;
-import java.sql.Date;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
-import com.rsv.model.Departement;
-import com.rsv.model.Employe;
-import com.rsv.model.Projet;
-
-public class ProjetDAO {
-	
-	public static boolean createProject(Projet projet) {
-		
-		String nom = projet.getNom();
-		Employe chef = projet.getChefDeProjet();
-		LocalDate echeance= projet.getEcheance();
-		Departement domaine = projet.getDomaine();
-		String état = projet.getÉtat();
-		List<Employe> equipe = projet.getEquipe();
-		int retard = projet.getRetard();
-		
-		Date echeanceDate = Date.valueOf(echeance);
-		String equipeListe = equipe.stream()
-				.map(e -> String.valueOf(e.getId()))
-				.collect(Collectors.joining(","));
-		
-		String sql = "INSERT INTO projet (id_projet,nom,chefDeProjetId,echeance,id_domaine,etat,equipeList,retard) VALUES (?,?,?,?,?,?,?,?)";
-		try(Connection conn = DBUtil.getConnection()) {
-			PreparedStatement stmt = conn.prepareStatement(sql);
-			stmt.setString(1, null);
-			stmt.setString(2,nom);
-			stmt.setString(3,""+chef.getId());
-			stmt.setString(4,""+echeanceDate);
-			stmt.setString(5,""+ domaine.getId());
-			stmt.setString(6,état);
-			stmt.setString(7,equipeListe);
-			stmt.setString(8,""+retard);
-			System.out.println(sql);
-			
-			int rowInserted = stmt.executeUpdate();
-			
-			stmt.close();
-			return rowInserted>0;
-		} catch (SQLException e) {
-			System.out.println("Error registrating project :" +e.getMessage());
-			return false;
-		}
-		
-	}
-	
-	public static boolean modifyProject(int id, Projet projetModifie) {
-
-
-		String sqlModify = "UPDATE Projet SET nom = ?, chefDeProjetId = ?, echeance = ?, id_domaine = ?, etat = ?, equipeList = ?, retard = ? WHERE id_projet = ?";
-		try(Connection conn = DBUtil.getConnection()){
-			PreparedStatement stmt = conn.prepareStatement(sqlModify);
-
-			String equipeListe = projetModifie.getEquipe().stream()
-					.map(e -> String.valueOf(e.getId()))
-					.collect(Collectors.joining(","));
-
-			stmt.setString(1, projetModifie.getNom());
-			stmt.setString(2, ""+projetModifie.getChefDeProjet().getId());
-			stmt.setString(3,""+ projetModifie.getEcheance());
-			stmt.setString(4,""+ projetModifie.getDomaine().getId());
-			stmt.setString(5, projetModifie.getÉtat());
-			stmt.setString(6, equipeListe);
-			stmt.setString(7,""+projetModifie.getRetard());
-			stmt.setInt(8,id);
-			
-			stmt.executeUpdate();
-			
-			stmt.close();
-			
-			return true;
-			
-		}catch(SQLException e) {
-			e.printStackTrace();
-			return false;
-		}
-		
-	}
-	
-	public static String getProjectStatus(Projet projet) {
-		int idProjet = projet.getId();
-		try(Connection conn = DBUtil.getConnection()){
-			String sql = "SELECT etat FROM Projet WHERE id_projet = ?";
-			PreparedStatement stmt = conn.prepareStatement(sql);
-			stmt.setString(1,Integer.toString(idProjet));
-			
-			ResultSet rs = stmt.executeQuery();
-			rs.next();
-			String statut =rs.getString(1);
-			return statut;
-		}catch(SQLException e) {
-			System.out.println("Error on getting project status");
-			return null;
-		}
-	}
-	
-    public static Projet projetAvecId(int id) throws SQLException {
-	    String sql = "SELECT * FROM Projet WHERE id_projet = ?";
-	    Projet e = null;
-
-	    try (Connection c = DBUtil.getConnection()) {
-	    		PreparedStatement ps = c.prepareStatement(sql);
-	    		ps.setInt(1, id);
-	    		ResultSet rs = ps.executeQuery();
-	            if (rs.next()) {
-	            	int idChef =rs.getInt("chefDeProjetId");
-	            	Employe chef = EmployeDAO.employeAvecId(idChef);
-	            	int idDep = rs.getInt("id_domaine");
-	            	Departement departement = DepartementDAO.departementAvecId(idDep);
-
-	            	// Charger l'équipe réelle depuis equipeList
-	            	List<Employe> equipe = new ArrayList<Employe>();
-	            	String equipeListStr = rs.getString("equipeList");
-	            	if (equipeListStr != null && !equipeListStr.trim().isEmpty()) {
-	            		String[] ids = equipeListStr.split(",");
-	            		for (String idStr : ids) {
-	            			try {
-	            				int empId = Integer.parseInt(idStr.trim());
-	            				Employe emp = EmployeDAO.employeAvecId(empId);
-	            				if (emp != null) {
-	            					equipe.add(emp);
-	            				}
-	            			} catch (NumberFormatException ex) {
-	            				// Ignorer les IDs invalides
-	            			}
-	            		}
-	            	}
-
-	            	Date dateSql =  rs.getDate("echeance");
-	            	System.out.println(dateSql);
-	            	LocalDate date = dateSql.toLocalDate();
-	                e = new Projet(
-	                		rs.getInt("id_projet"),
-	                	    rs.getString("nom"),
-	                	    chef,
-	                	    date,
-	                	    departement,
-	                	    rs.getString("etat"),
-	                	    equipe,
-	                	    rs.getInt("retard")
-	                );
-
-	            }
-	        }
-	    return e;
-	    }
-
-	
-    public static List<Projet> getAll() throws SQLException{
-    	String sql = "SELECT * FROM projet";
-    	List<Projet> result = new ArrayList<Projet>();
-    	try (Connection c = DBUtil.getConnection()) {
-    		PreparedStatement stmt = c.prepareStatement(sql);
-    		ResultSet rs = stmt.executeQuery();
-    		
-   	           while(rs.next()) {
-   	            	int id = rs.getInt("id_projet");
-   	            	System.out.println(id);
-   	            	Projet projet=projetAvecId(id);
-   	            	
-   	            	result.add(projet);
-   	            	System.out.println(result);
-   	            }
-   	            	
-   	           
-   	      
-			}
-
+/**
+ * DAO pour gérer les projets.
+ 
   
-    	return result;
-    }
-    public static boolean deleteProject(int id) throws SQLException {
-    	String sql ="DELETE FROM projet WHERE id_projet=?";
-    	try(Connection c = DBUtil.getConnection()){
-    		PreparedStatement stmt = c.prepareStatement(sql);
-    		stmt.setInt(1, id);
-    		int rowDeleted = stmt.executeUpdate();
+ * @author RowTech Team
+ * @version 2.0
+ */
+public class ProjetDAO {
 
-			stmt.close();
-			return rowDeleted>0;
-    	}
-    }
-
-    // Méthode alias pour getProjectById
-    public static Projet getProjectById(int id) throws SQLException {
-    	return projetAvecId(id);
-    }
-
-    // Méthode pour mettre à jour un projet
-    public static boolean updateProject(Projet projet) throws SQLException {
-    	return modifyProject(projet.getId(), projet);
-    }
-
-    // Rechercher des projets par état
-    public static List<Projet> rechercherParEtat(String etat) throws SQLException {
-    	if (etat == null || etat.trim().isEmpty()) {
-    		return getAll();
-    	}
-
-    	String sql = "SELECT * FROM projet WHERE etat LIKE ?";
-    	List<Projet> result = new ArrayList<>();
-
-    	try (Connection c = DBUtil.getConnection()) {
-    		PreparedStatement stmt = c.prepareStatement(sql);
-    		stmt.setString(1, "%" + etat + "%");
-    		ResultSet rs = stmt.executeQuery();
-
-    		while(rs.next()) {
-    			int id = rs.getInt("id_projet");
-    			Projet projet = projetAvecId(id);
-    			result.add(projet);
-    		}
-    	}
-
-    	return result;
+    /**
+     * Ajoute un nouveau projet
+     */
+    public boolean ajouterProjet(Projet projet) {
+        Session session = null;
+        Transaction transaction = null;
+        
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+            
+            session.persist(projet);
+            
+            transaction.commit();
+            return true;
+            
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null) session.close();
+        }
     }
 
-    // Ajouter un employé à un projet
-    public static boolean ajouterEmployeAProjet(int projetId, int employeId) throws SQLException {
-    	Projet projet = projetAvecId(projetId);
-    	if (projet == null) {
-    		return false;
-    	}
-
-    	List<Employe> equipe = projet.getEquipe();
-    	// Vérifier si l'employé n'est pas déjà dans l'équipe
-    	boolean exists = equipe.stream().anyMatch(e -> e.getId() == employeId);
-    	if (exists) {
-    		return false; // Déjà dans l'équipe
-    	}
-
-    	Employe employe = EmployeDAO.employeAvecId(employeId);
-    	if (employe == null) {
-    		return false;
-    	}
-
-    	equipe.add(employe);
-    	String equipeList = equipe.stream()
-    			.map(e -> String.valueOf(e.getId()))
-    			.collect(Collectors.joining(","));
-
-    	String sql = "UPDATE projet SET equipeList = ? WHERE id_projet = ?";
-    	try (Connection c = DBUtil.getConnection()) {
-    		PreparedStatement ps = c.prepareStatement(sql);
-    		ps.setString(1, equipeList);
-    		ps.setInt(2, projetId);
-    		int rows = ps.executeUpdate();
-    		return rows > 0;
-    	}
+    /**
+     * Liste tous les projets
+     */
+    public List<Projet> listerTous() {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            
+            String hql = "SELECT DISTINCT p FROM Projet p LEFT JOIN FETCH p.employes ORDER BY p.nom";
+            Query<Projet> query = session.createQuery(hql, Projet.class);
+            
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+    
+    /**
+     
+     * @param chefId ID de l'employé chef
+     * @return Liste des projets où l'employé est chef
+     */
+    public List<Projet> listerProjetsParChef(Integer chefId) {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            
+            String hql = "SELECT DISTINCT p FROM Projet p " +
+                        "LEFT JOIN FETCH p.employes " +
+                        "WHERE p.chefDeProjet.id = :chefId " +
+                        "ORDER BY p.nom";
+            Query<Projet> query = session.createQuery(hql, Projet.class);
+            query.setParameter("chefId", chefId);
+            
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+    
+    /**
+     
+     * @param projetId ID du projet
+     * @param employeId ID de l'employé
+     * @return true si l'employé est chef du projet, false sinon
+     */
+    public boolean verifierEstChefProjet(Integer projetId, Integer employeId) {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            
+            String hql = "SELECT COUNT(p) FROM Projet p WHERE p.id = :projetId AND p.chefDeProjet.id = :employeId";
+            Query<Long> query = session.createQuery(hql, Long.class);
+            query.setParameter("projetId", projetId);
+            query.setParameter("employeId", employeId);
+            
+            Long count = query.uniqueResult();
+            return count != null && count > 0;
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+    
+    /**
+     
+     * Utilisé par le chef pour consulter les fiches de paie de son équipe.
+     * @param projetId ID du projet
+     * @return Liste des employés du projet
+     */
+    public List<Employe> getEmployesDuProjet(Integer projetId) {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            
+            String hql = "SELECT DISTINCT e FROM Employe e " +
+                        "JOIN e.projets p " +
+                        "WHERE p.id = :projetId " +
+                        "ORDER BY e.nom, e.prenom";
+            Query<Employe> query = session.createQuery(hql, Employe.class);
+            query.setParameter("projetId", projetId);
+            
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        } finally {
+            if (session != null) session.close();
+        }
     }
 
-    // Retirer un employé d'un projet
-    public static boolean retirerEmployeDeProjet(int projetId, int employeId) throws SQLException {
-    	Projet projet = projetAvecId(projetId);
-    	if (projet == null) {
-    		return false;
-    	}
+    /**
+     * Récupère un projet par ID
+     */
+    public Projet getProjetById(Integer id) {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            return session.get(Projet.class, id);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (session != null) session.close();
+        }
+    }
 
-    	List<Employe> equipe = projet.getEquipe();
-    	boolean removed = equipe.removeIf(e -> e.getId() == employeId);
+    /**
+     * Récupère un projet avec ses employés
+     */
+    public Projet getProjetAvecEmployes(Integer id) {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            
+            String hql = "FROM Projet p LEFT JOIN FETCH p.employes WHERE p.id = :id";
+            Query<Projet> query = session.createQuery(hql, Projet.class);
+            query.setParameter("id", id);
+            
+            return query.uniqueResult();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+    
+    /**
+     * Récupère tous les projets d'un employé avec les employés chargés
+     */
+    public List<Projet> listerProjetsByEmploye(Integer employeId) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        List<Projet> projets = new ArrayList<>();
+        
+        try {
+            // Utiliser JOIN FETCH pour charger les employés en même temps
+            String hql = "SELECT DISTINCT p FROM Projet p " +
+                         "LEFT JOIN FETCH p.employes " +
+                         "WHERE p.id IN (SELECT p2.id FROM Projet p2 JOIN p2.employes e WHERE e.id = :employeId) " +
+                         "ORDER BY p.nom";
+            Query<Projet> query = session.createQuery(hql, Projet.class);
+            query.setParameter("employeId", employeId);
+            projets = query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            session.close();
+        }
+        
+        return projets;
+    }
 
-    	if (!removed) {
-    		return false; // Employé n'était pas dans l'équipe
-    	}
+    /**
+     * Modifie un projet
+     */
+    public boolean modifierProjet(Projet projet) {
+        Session session = null;
+        Transaction transaction = null;
+        
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+            
+            session.merge(projet);
+            
+            transaction.commit();
+            return true;
+            
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null) session.close();
+        }
+    }
 
-    	String equipeList = equipe.stream()
-    			.map(e -> String.valueOf(e.getId()))
-    			.collect(Collectors.joining(","));
+    /**
+     * Supprime un projet
+     */
+    public boolean supprimerProjet(Integer id) {
+        Session session = null;
+        Transaction transaction = null;
+        
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+            
+            Projet projet = session.get(Projet.class, id);
+            if (projet != null) {
+                session.remove(projet);
+                transaction.commit();
+                return true;
+            }
+            
+            return false;
+            
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null) session.close();
+        }
+    }
 
-    	String sql = "UPDATE projet SET equipeList = ? WHERE id_projet = ?";
-    	try (Connection c = DBUtil.getConnection()) {
-    		PreparedStatement ps = c.prepareStatement(sql);
-    		ps.setString(1, equipeList);
-    		ps.setInt(2, projetId);
-    		int rows = ps.executeUpdate();
-    		return rows > 0;
-    	}
+    /**
+     * Ajoute un employé à un projet
+     */
+    public boolean ajouterEmployeAuProjet(Integer projetId, Integer employeId) {
+        Session session = null;
+        Transaction transaction = null;
+        
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+            
+            Projet projet = session.get(Projet.class, projetId);
+            Employe employe = session.get(Employe.class, employeId);
+            
+            if (projet != null && employe != null) {
+                projet.getEmployes().add(employe);
+                session.merge(projet);
+                transaction.commit();
+                return true;
+            }
+            
+            return false;
+            
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+
+    /**
+     * Retire un employé d'un projet
+     */
+    public boolean retirerEmployeDuProjet(Integer projetId, Integer employeId) {
+        Session session = null;
+        Transaction transaction = null;
+        
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+            
+            Projet projet = session.get(Projet.class, projetId);
+            Employe employe = session.get(Employe.class, employeId);
+            
+            if (projet != null && employe != null) {
+                projet.getEmployes().remove(employe);
+                session.merge(projet);
+                transaction.commit();
+                return true;
+            }
+            
+            return false;
+            
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+
+    /**
+     * Compte le nombre de projets
+     */
+    public long compterProjets() {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            String hql = "SELECT COUNT(p) FROM Projet p";
+            Query<Long> query = session.createQuery(hql, Long.class);
+            return query.uniqueResult();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+
+    /**
+     * Liste les projets par état
+     */
+    public List<Projet> listerParEtat(String etat) {
+        Session session = null;
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            String hql = "FROM Projet WHERE etat = :etat ORDER BY nom";
+            Query<Projet> query = session.createQuery(hql, Projet.class);
+            query.setParameter("etat", etat);
+            return query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+    
+    /**
+     * Liste tous les projets
+     */
+    public List<Projet> listerProjets() {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        List<Projet> projets = new ArrayList<>();
+        
+        try {
+            String hql = "FROM Projet p ORDER BY p.nom";
+            Query<Projet> query = session.createQuery(hql, Projet.class);
+            projets = query.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            session.close();
+        }
+        
+        return projets;
+    }
+
+    /**
+    
+    
+     * Liste tous les projets auxquels un employé appartient (chef ou membre).
+     * 
+     * @param employeId ID de l'employé
+     * @return Liste des projets
+     */
+    public List<Projet> listerTousMesProjets(Integer employeId) {
+        Session session = null;
+        
+        try {
+            session = HibernateUtil.getSessionFactory().openSession();
+            
+           
+            String hql = "SELECT DISTINCT p FROM Projet p " +
+                         "LEFT JOIN FETCH p.employes " +
+                         "WHERE p.chefDeProjet.id = :employeId " +
+                         "OR :employeId IN (SELECT e.id FROM p.employes e) " +
+                         "ORDER BY p.nom";
+            
+            Query<Projet> query = session.createQuery(hql, Projet.class);
+            query.setParameter("employeId", employeId);
+            
+            return query.list();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+
+   
+    /**
+     * Vérifie si un employé appartient à un projet (chef OU membre).
+     * 
+     * @param projetId ID du projet
+     * @param employeId ID de l'employé
+     * @return true si l'employé appartient au projet, false sinon
+     */
+    public boolean appartientAuProjet(Integer projetId, Integer employeId) {
+        Transaction transaction = null;
+        boolean appartient = false;
+        
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            
+            String hql = "SELECT COUNT(p) FROM Projet p " +
+                         "WHERE p.id = :projetId " +
+                         "AND (p.chefDeProjet.id = :employeId " +
+                         "OR :employeId IN (SELECT e.id FROM p.employes e))";
+            
+            Long count = session.createQuery(hql, Long.class)
+                               .setParameter("projetId", projetId)
+                               .setParameter("employeId", employeId)
+                               .uniqueResult();
+            
+            appartient = (count != null && count > 0);
+            
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+        }
+        
+        return appartient;
     }
 }

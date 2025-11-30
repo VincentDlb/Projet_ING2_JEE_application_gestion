@@ -1,203 +1,410 @@
 package com.rsv.controller;
 
-import com.rsv.bdd.DepartementDAO;
-import com.rsv.bdd.EmployeDAO;
 import com.rsv.bdd.ProjetDAO;
-import com.rsv.model.Departement;
-import com.rsv.model.Employe;
+import com.rsv.bdd.EmployeDAO;
 import com.rsv.model.Projet;
+import com.rsv.model.Employe;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.*;
+import jakarta.servlet.annotation.*;
 import jakarta.servlet.http.*;
-
 import java.io.IOException;
-import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
-@WebServlet("/ServletProjet")
+/**
+ * Servlet qui gère toutes les opérations sur les projets
+ */
+@WebServlet("/projets")
+@SuppressWarnings("serial")
 public class ServletProjet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		String action = req.getParameter("action");
-		if (action == null) {
-			action = "list";
-		}
-
-		try {
-			switch (action) {
-			case "insert":
-				// Afficher le formulaire d'ajout
-				List<Employe> employesInsert = EmployeDAO.listerTous();
-				List<Departement> departementsInsert = DepartementDAO.listerTous();
-				req.setAttribute("employes", employesInsert);
-				req.setAttribute("departements", departementsInsert);
-				req.getRequestDispatcher("projet/ajouterProjet.jsp").forward(req, resp);
-				break;
-
-			case "delete":
-				// Supprimer un projet
-				int idDelete = Integer.parseInt(req.getParameter("id"));
-				ProjetDAO.deleteProject(idDelete);
-				resp.sendRedirect(req.getContextPath() + "/ServletProjet");
-				break;
-
-			case "edit":
-				// Afficher le formulaire de modification
-				int idEdit = Integer.parseInt(req.getParameter("id"));
-				Projet projetEdit = ProjetDAO.getProjectById(idEdit);
-				List<Employe> employesEdit = EmployeDAO.listerTous();
-				List<Departement> departementsEdit = DepartementDAO.listerTous();
-				req.setAttribute("projet", projetEdit);
-				req.setAttribute("employes", employesEdit);
-				req.setAttribute("departements", departementsEdit);
-				req.getRequestDispatcher("projet/modifierProjet.jsp").forward(req, resp);
-				break;
-
-			case "view":
-				// Voir les détails d'un projet
-				int idView = Integer.parseInt(req.getParameter("id"));
-				Projet projetView = ProjetDAO.getProjectById(idView);
-				List<Employe> tousEmployes = EmployeDAO.listerTous();
-				req.setAttribute("projet", projetView);
-				req.setAttribute("tousEmployes", tousEmployes);
-				req.getRequestDispatcher("projet/voirProjet.jsp").forward(req, resp);
-				break;
-
-			case "addEmployee":
-				// Ajouter un employé à un projet
-				int projetIdAdd = Integer.parseInt(req.getParameter("projetId"));
-				int employeIdAdd = Integer.parseInt(req.getParameter("employeId"));
-				ProjetDAO.ajouterEmployeAProjet(projetIdAdd, employeIdAdd);
-				resp.sendRedirect(req.getContextPath() + "/ServletProjet?action=view&id=" + projetIdAdd);
-				break;
-
-			case "removeEmployee":
-				// Retirer un employé d'un projet
-				int projetIdRemove = Integer.parseInt(req.getParameter("projetId"));
-				int employeIdRemove = Integer.parseInt(req.getParameter("employeId"));
-				ProjetDAO.retirerEmployeDeProjet(projetIdRemove, employeIdRemove);
-				resp.sendRedirect(req.getContextPath() + "/ServletProjet?action=view&id=" + projetIdRemove);
-				break;
-
-			case "search":
-				// Rechercher des projets par état
-				String etatSearch = req.getParameter("etat");
-				List<Projet> resultats = ProjetDAO.rechercherParEtat(etatSearch != null ? etatSearch : "");
-				req.setAttribute("listeProjets", resultats);
-				req.getRequestDispatcher("projet/gestionnaireProjet.jsp").forward(req, resp);
-				break;
-
-			default:
-				// Lister tous les projets
-				List<Projet> liste = ProjetDAO.getAll();
-				req.setAttribute("listeProjets", liste);
-				req.getRequestDispatcher("projet/gestionnaireProjet.jsp").forward(req, resp);
-				break;
-			}
-		} catch (SQLException e) {
-			e.printStackTrace();
-			req.setAttribute("erreur", "Erreur lors de l'opération : " + e.getMessage());
-			try {
-				List<Projet> liste = ProjetDAO.getAll();
-				req.setAttribute("listeProjets", liste);
-			} catch (SQLException ex) {
-				ex.printStackTrace();
-			}
-			req.getRequestDispatcher("projet/gestionnaireProjet.jsp").forward(req, resp);
-		}
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		String action = req.getParameter("action");
-
-		try {
-			switch (action) {
-			case "insert":
-				// Créer un nouveau projet
-				String nom = req.getParameter("nom");
-				String idChefStr = req.getParameter("chefDeProjetId");
-				String echeance = req.getParameter("echeance");
-				String idDepartementStr = req.getParameter("departementId");
-				String etat = req.getParameter("etat");
-				String retardStr = req.getParameter("retard");
-
-				int chefDeProjetId = Integer.parseInt(idChefStr);
-				Employe chef = EmployeDAO.employeAvecId(chefDeProjetId);
-
-				LocalDate dateEcheance = LocalDate.parse(echeance);
-
-				int departementId = Integer.parseInt(idDepartementStr);
-				Departement departement = DepartementDAO.departementAvecId(departementId);
-
-				int retard = retardStr != null && !retardStr.isEmpty() ? Integer.parseInt(retardStr) : 0;
-
-				List<Employe> equipe = new ArrayList<>();
-
-				Projet nouveauProjet = new Projet(
-					0, // L'ID sera auto-généré
-					nom,
-					chef,
-					dateEcheance,
-					departement,
-					etat,
-					equipe,
-					retard
-				);
-
-				ProjetDAO.createProject(nouveauProjet);
-				break;
-
-			case "edit":
-				// Modifier un projet existant
-				String idStr = req.getParameter("id");
-				String nomEdit = req.getParameter("nom");
-				String idChefStrEdit = req.getParameter("chefDeProjetId");
-				String echeanceEdit = req.getParameter("echeance");
-				String idDepartementStrEdit = req.getParameter("departementId");
-				String etatEdit = req.getParameter("etat");
-				String retardStrEdit = req.getParameter("retard");
-
-				int idProjet = Integer.parseInt(idStr);
-				int chefDeProjetIdEdit = Integer.parseInt(idChefStrEdit);
-				Employe chefEdit = EmployeDAO.employeAvecId(chefDeProjetIdEdit);
-
-				LocalDate dateEcheanceEdit = LocalDate.parse(echeanceEdit);
-
-				int departementIdEdit = Integer.parseInt(idDepartementStrEdit);
-				Departement departementEdit = DepartementDAO.departementAvecId(departementIdEdit);
-
-				int retardEdit = retardStrEdit != null && !retardStrEdit.isEmpty() ? Integer.parseInt(retardStrEdit) : 0;
-
-				List<Employe> equipeEdit = new ArrayList<>();
-
-				Projet projetModifie = new Projet(
-					idProjet,
-					nomEdit,
-					chefEdit,
-					dateEcheanceEdit,
-					departementEdit,
-					etatEdit,
-					equipeEdit,
-					retardEdit
-				);
-
-				ProjetDAO.updateProject(projetModifie);
-				break;
-
-			default:
-				break;
-			}
-		} catch (NumberFormatException | SQLException ex) {
-			ex.printStackTrace();
-			req.setAttribute("erreur", "Erreur lors de l'opération : " + ex.getMessage());
-		}
-
-		resp.sendRedirect(req.getContextPath() + "/ServletProjet");
-	}
+    
+    private ProjetDAO projetDAO;
+    private EmployeDAO employeDAO;
+    
+    @Override
+    public void init() {
+        projetDAO = new ProjetDAO();
+        employeDAO = new EmployeDAO();
+    }
+    
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        String action = request.getParameter("action");
+        if (action == null) action = "lister";
+        
+        try {
+            switch (action) {
+                case "lister":
+                    listerProjets(request, response);
+                    break;
+                case "nouveau":
+                    afficherFormulaireCreation(request, response);
+                    break;
+                case "detail":
+                    afficherDetailProjet(request, response);
+                    break;
+                case "voirMembres":
+                    afficherPageAffectation(request, response);
+                    break;
+                case "modifier":
+                    afficherFormulaireModification(request, response);
+                    break;
+                case "supprimer":
+                    supprimerProjet(request, response);
+                    break;
+                default:
+                    listerProjets(request, response);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("erreur", "Une erreur s'est produite : " + e.getMessage());
+            request.getRequestDispatcher("/erreur.jsp").forward(request, response);
+        }
+    }
+    
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        String action = request.getParameter("action");
+        
+        try {
+            switch (action) {
+                case "creer":
+                    creerProjet(request, response);
+                    break;
+                case "modifier":
+                    modifierProjet(request, response);
+                    break;
+                case "ajouterEmploye":
+                    ajouterEmployeAuProjet(request, response);
+                    break;
+                case "retirerEmploye":
+                    retirerEmployeDuProjet(request, response);
+                    break;
+                default:
+                    response.sendRedirect("projets?action=lister");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("projets?action=lister&erreur=exception");
+        }
+    }
+    
+    /**
+     * Liste tous les projets
+     */
+    private void listerProjets(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        List<Projet> liste = projetDAO.listerTous();
+        request.setAttribute("listeProjets", liste);
+        request.getRequestDispatcher("/projet/listeProjets.jsp").forward(request, response);
+    }
+    
+    /**
+     * Affiche le formulaire de création
+     */
+    private void afficherFormulaireCreation(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        List<Employe> listeEmployes = employeDAO.listerTous();
+        request.setAttribute("listeEmployes", listeEmployes);
+        request.getRequestDispatcher("/projet/formProjet.jsp").forward(request, response);
+    }
+    
+    /**
+     * NOUVELLE MÉTHODE: Affiche les détails complets d'un projet
+     */
+    private void afficherDetailProjet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        try {
+            String idStr = request.getParameter("id");
+            Integer id = Integer.parseInt(idStr);
+            
+            // Récupérer le projet avec ses employés
+            Projet projet = projetDAO.getProjetAvecEmployes(id);
+            
+            if (projet == null) {
+                response.sendRedirect("projets?action=lister&erreur=projet_introuvable");
+                return;
+            }
+            
+            request.setAttribute("projet", projet);
+            request.getRequestDispatcher("/projet/detailProjet.jsp").forward(request, response);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("projets?action=lister&erreur=exception");
+        }
+    }
+    
+    /**
+     * Affiche le formulaire de modification
+     */
+    private void afficherFormulaireModification(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        try {
+            String idStr = request.getParameter("id");
+            Integer id = Integer.parseInt(idStr);
+            
+            Projet projet = projetDAO.getProjetById(id);
+            
+            if (projet == null) {
+                response.sendRedirect("projets?action=lister&erreur=projet_introuvable");
+                return;
+            }
+            
+            List<Employe> listeEmployes = employeDAO.listerTous();
+            
+            request.setAttribute("projet", projet);
+            request.setAttribute("listeEmployes", listeEmployes);
+            request.getRequestDispatcher("/projet/modifierProjet.jsp").forward(request, response);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("projets?action=lister&erreur=exception");
+        }
+    }
+    
+    /**
+     * Affiche la page d'affectation des employés
+     */
+    private void afficherPageAffectation(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        try {
+            String idStr = request.getParameter("id");
+            Integer id = Integer.parseInt(idStr);
+            
+            // Récupérer le projet avec ses employés
+            Projet projet = projetDAO.getProjetAvecEmployes(id);
+            
+            if (projet == null) {
+                response.sendRedirect("projets?action=lister&erreur=projet_introuvable");
+                return;
+            }
+            
+            // Récupérer tous les employés pour afficher les disponibles
+            List<Employe> tousLesEmployes = employeDAO.listerTous();
+            
+            request.setAttribute("projet", projet);
+            request.setAttribute("tousLesEmployes", tousLesEmployes);
+            request.getRequestDispatcher("/projet/affecterEmployes.jsp").forward(request, response);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("projets?action=lister&erreur=exception");
+        }
+    }
+    
+    /**
+     * Crée un nouveau projet
+     */
+    private void creerProjet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        try {
+            String nom = request.getParameter("nom");
+            String description = request.getParameter("description");
+            String dateDebutStr = request.getParameter("dateDebut");
+            String dateFinStr = request.getParameter("dateFin");
+            String etat = request.getParameter("etat");
+            String chefProjetIdStr = request.getParameter("chefProjetId");
+            
+            if (nom == null || nom.trim().isEmpty()) {
+                response.sendRedirect("projets?action=nouveau&erreur=nom_vide");
+                return;
+            }
+            
+            Projet projet = new Projet();
+            projet.setNom(nom.trim());
+            projet.setDescription(description != null ? description.trim() : null);
+            
+            // Dates
+            if (dateDebutStr != null && !dateDebutStr.isEmpty()) {
+                projet.setDateDebut(LocalDate.parse(dateDebutStr));
+            }
+            if (dateFinStr != null && !dateFinStr.isEmpty()) {
+                projet.setDateFin(LocalDate.parse(dateFinStr));
+            }
+            
+            // État
+            projet.setEtat(etat != null && !etat.isEmpty() ? etat : "EN_COURS");
+            
+            // Chef de projet
+            if (chefProjetIdStr != null && !chefProjetIdStr.isEmpty() && !chefProjetIdStr.equals("")) {
+                Integer chefProjetId = Integer.parseInt(chefProjetIdStr);
+                Employe chefProjet = employeDAO.getEmployeById(chefProjetId);
+                projet.setChefDeProjet(chefProjet);
+            }
+            
+            boolean success = projetDAO.ajouterProjet(projet);
+            
+            if (success) {
+                response.sendRedirect("projets?action=lister&message=creation_ok");
+            } else {
+                response.sendRedirect("projets?action=nouveau&erreur=echec_creation");
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("projets?action=nouveau&erreur=exception");
+        }
+    }
+    
+    /**
+     * Modifie un projet existant
+     */
+    private void modifierProjet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        try {
+            String idStr = request.getParameter("id");
+            Integer id = Integer.parseInt(idStr);
+            
+            String nom = request.getParameter("nom");
+            String description = request.getParameter("description");
+            String dateDebutStr = request.getParameter("dateDebut");
+            String dateFinStr = request.getParameter("dateFin");
+            String etat = request.getParameter("etat");
+            String chefProjetIdStr = request.getParameter("chefProjetId");
+            
+            if (nom == null || nom.trim().isEmpty()) {
+                response.sendRedirect("projets?action=modifier&id=" + id + "&erreur=nom_vide");
+                return;
+            }
+            
+            Projet projet = projetDAO.getProjetById(id);
+            
+            if (projet == null) {
+                response.sendRedirect("projets?action=lister&erreur=projet_introuvable");
+                return;
+            }
+            
+            // Mise à jour des champs
+            projet.setNom(nom.trim());
+            projet.setDescription(description != null ? description.trim() : null);
+            
+            // Dates
+            if (dateDebutStr != null && !dateDebutStr.isEmpty()) {
+                projet.setDateDebut(LocalDate.parse(dateDebutStr));
+            } else {
+                projet.setDateDebut(null);
+            }
+            
+            if (dateFinStr != null && !dateFinStr.isEmpty()) {
+                projet.setDateFin(LocalDate.parse(dateFinStr));
+            } else {
+                projet.setDateFin(null);
+            }
+            
+            // État
+            projet.setEtat(etat != null && !etat.isEmpty() ? etat : "EN_COURS");
+            
+            // Chef de projet
+            if (chefProjetIdStr != null && !chefProjetIdStr.isEmpty() && !chefProjetIdStr.equals("")) {
+                Integer chefProjetId = Integer.parseInt(chefProjetIdStr);
+                Employe chefProjet = employeDAO.getEmployeById(chefProjetId);
+                projet.setChefDeProjet(chefProjet);
+            } else {
+                projet.setChefDeProjet(null);
+            }
+            
+            boolean success = projetDAO.modifierProjet(projet);
+            
+            if (success) {
+                response.sendRedirect("projets?action=lister&message=modification_ok");
+            } else {
+                response.sendRedirect("projets?action=modifier&id=" + id + "&erreur=echec_modification");
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("projets?action=lister&erreur=exception");
+        }
+    }
+    
+    /**
+     * Ajoute un employé à un projet
+     */
+    private void ajouterEmployeAuProjet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        try {
+            String projetIdStr = request.getParameter("projetId");
+            String employeIdStr = request.getParameter("employeId");
+            
+            Integer projetId = Integer.parseInt(projetIdStr);
+            Integer employeId = Integer.parseInt(employeIdStr);
+            
+            boolean success = projetDAO.ajouterEmployeAuProjet(projetId, employeId);
+            
+            if (success) {
+                response.sendRedirect("projets?action=voirMembres&id=" + projetId + "&message=employe_ajoute");
+            } else {
+                response.sendRedirect("projets?action=voirMembres&id=" + projetId + "&erreur=echec_ajout");
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("projets?action=lister&erreur=exception");
+        }
+    }
+    
+    /**
+     * Retire un employé d'un projet
+     */
+    private void retirerEmployeDuProjet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        try {
+            String projetIdStr = request.getParameter("projetId");
+            String employeIdStr = request.getParameter("employeId");
+            
+            Integer projetId = Integer.parseInt(projetIdStr);
+            Integer employeId = Integer.parseInt(employeIdStr);
+            
+            boolean success = projetDAO.retirerEmployeDuProjet(projetId, employeId);
+            
+            if (success) {
+                response.sendRedirect("projets?action=voirMembres&id=" + projetId + "&message=employe_retire");
+            } else {
+                response.sendRedirect("projets?action=voirMembres&id=" + projetId + "&erreur=echec_retrait");
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("projets?action=lister&erreur=exception");
+        }
+    }
+    
+    /**
+     * Supprime un projet
+     */
+    private void supprimerProjet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        try {
+            String idStr = request.getParameter("id");
+            Integer id = Integer.parseInt(idStr);
+            
+            boolean success = projetDAO.supprimerProjet(id);
+            
+            if (success) {
+                response.sendRedirect("projets?action=lister&message=suppression_ok");
+            } else {
+                response.sendRedirect("projets?action=lister&erreur=echec_suppression");
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("projets?action=lister&erreur=exception");
+        }
+    }
 }

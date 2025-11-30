@@ -1,115 +1,147 @@
 package com.rsv.model;
 
+import jakarta.persistence.*;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Objects;
+import java.util.HashSet;
+import java.util.Set;
 
+/**
+ * Entité représentant un projet
+ */
+@Entity
+@Table(name = "projet")
 public class Projet {
-	private Integer id;
-	private String nom;
-	private Employe chefDeProjet;
-	private LocalDate echeance;
-	private Departement domaine;
-	private String état;
-	private List<Employe> equipe;
-	private int retard;
-	
-	public Projet(Integer id, String nom, Employe chefDeProjet, LocalDate echeance, Departement domaine, String état,
-			List<Employe> equipe, int retard) {
-		super();
-		this.id = id;
-		this.nom = nom;
-		this.chefDeProjet = chefDeProjet;
-		this.echeance = echeance;
-		this.domaine = domaine;
-		this.état = état;
-		this.equipe = equipe;
-		this.retard = retard;
-	}
-	
-	public String getNom() {
-		return nom;
-	}
-	public Integer getId() {
-		return id;
-	}
-	public int getRetard() {
-		return retard;
-	}
-	
-	public void setRetard(int retard) {
-		this.retard = retard;
-	}
-	
-	public void setId(int id) {
-		this.id= id;
-	}
 
-	public void setNom(String nom) {
-		this.nom = nom;
-	}
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
 
-	public Employe getChefDeProjet() {
-		return chefDeProjet;
-	}
+    @Column(nullable = false, length = 100)
+    private String nom;
 
-	public void setChefDeProjet(Employe chefDeProjet) {
-		this.chefDeProjet = chefDeProjet;
-	}
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
-	public LocalDate getEcheance() {
-		return echeance;
-	}
+    @Column(name = "date_debut")
+    private LocalDate dateDebut;
 
-	public void setEcheance(LocalDate echeance) {
-		this.echeance = echeance;
-	}
+    @Column(name = "date_fin")
+    private LocalDate dateFin;
 
-	public Departement getDomaine() {
-		return domaine;
-	}
+    @Column(length = 20)
+    private String etat;
 
-	public void setDomaine(Departement domaine) {
-		this.domaine = domaine;
-	}
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "chef_projet_id")
+    private Employe chefDeProjet;
 
-	public String getÉtat() {
-		return état;
-	}
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "employe_projet",
+        joinColumns = @JoinColumn(name = "projet_id"),
+        inverseJoinColumns = @JoinColumn(name = "employe_id")
+    )
+    private Set<Employe> employes = new HashSet<>();
 
-	public void setÉtat(String état) {
-		this.état = état;
-	}
+    // Constructeurs
+    public Projet() {
+        this.etat = "EN_COURS"; // Valeur par défaut
+        this.employes = new HashSet<>();
+    }
 
-	public List<Employe> getEquipe() {
-		return equipe;
-	}
+    public Projet(String nom, String description, LocalDate dateDebut, LocalDate dateFin) {
+        this.nom = nom;
+        this.description = description;
+        this.dateDebut = dateDebut;
+        this.dateFin = dateFin;
+        this.etat = "EN_COURS";
+        this.employes = new HashSet<>();
+    }
 
-	public void setEquipe(List<Employe> equipe) {
-		this.equipe = equipe;
-	}
-	@Override
-	public int hashCode() {
-		return Objects.hash(chefDeProjet, domaine, echeance, equipe, nom, état);
-	}
+    // Getters et Setters
+    public Integer getId() {
+        return id;
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		Projet other = (Projet) obj;
-		return Objects.equals(chefDeProjet, other.chefDeProjet) && Objects.equals(domaine, other.domaine)
-				&& Objects.equals(echeance, other.echeance) && Objects.equals(equipe, other.equipe)
-				&& Objects.equals(nom, other.nom) && Objects.equals(état, other.état) && Objects.equals(id,other.id) &&Objects.equals(retard, other.retard);
-	}
-	@Override
-	public String toString() {
-		return "Projet [id="+ id + "nom=" + nom + ", chefDeProjet=" + chefDeProjet + ", echeance=" + echeance + ", domaine="
-				+ domaine + ", état=" + état + ", equipe=" + equipe + ", retard=" + retard +"]";
-	}
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getNom() {
+        return nom;
+    }
+
+    public void setNom(String nom) {
+        this.nom = nom;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public LocalDate getDateDebut() {
+        return dateDebut;
+    }
+
+    public void setDateDebut(LocalDate dateDebut) {
+        this.dateDebut = dateDebut;
+    }
+
+    public LocalDate getDateFin() {
+        return dateFin;
+    }
+
+    public void setDateFin(LocalDate dateFin) {
+        this.dateFin = dateFin;
+    }
+
+    public String getEtat() {
+        return etat != null ? etat : "EN_COURS";
+    }
+
+    public void setEtat(String etat) {
+        this.etat = etat;
+    }
+
+    public Employe getChefDeProjet() {
+        return chefDeProjet;
+    }
+
+    public void setChefDeProjet(Employe chefDeProjet) {
+        this.chefDeProjet = chefDeProjet;
+    }
+
+    public Set<Employe> getEmployes() {
+        return employes != null ? employes : new HashSet<>();
+    }
+
+    public void setEmployes(Set<Employe> employes) {
+        this.employes = employes;
+    }
+
+    // Méthode utilitaire pour getDateEcheance (alias de dateFin)
+    public LocalDate getDateEcheance() {
+        return this.dateFin;
+    }
+
+    public void setDateEcheance(LocalDate dateEcheance) {
+        this.dateFin = dateEcheance;
+    }
+
+    @Override
+    public String toString() {
+        return "Projet{" +
+                "id=" + id +
+                ", nom='" + nom + '\'' +
+                ", description='" + description + '\'' +
+                ", dateDebut=" + dateDebut +
+                ", dateFin=" + dateFin +
+                ", etat='" + etat + '\'' +
+                ", chefDeProjet=" + (chefDeProjet != null ? chefDeProjet.getNom() : "Non assigné") +
+                '}';
+    }
 }
-

@@ -1,201 +1,234 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%
+    String erreur = request.getParameter("erreur");
+    String message = request.getParameter("message");
+    String succes = (String) request.getAttribute("succes");
+%>
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Connexion - Gestion RH</title>
-<link rel="stylesheet" href="style.css">
-<style>
-.login-container {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 1rem;
-}
-
-.login-box {
-    background: white;
-    padding: 3rem;
-    border-radius: 1rem;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    width: 100%;
-    max-width: 450px;
-}
-
-.login-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.login-header h1 {
-    font-size: 2rem;
-    color: #1f2937;
-    margin-bottom: 0.5rem;
-}
-
-.login-header p {
-    color: #6b7280;
-    font-size: 1rem;
-}
-
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: #374151;
-    font-weight: 600;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: 2px solid #e5e7eb;
-    border-radius: 0.5rem;
-    font-size: 1rem;
-    transition: border-color 0.3s;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: #667eea;
-}
-
-.login-button {
-    width: 100%;
-    padding: 1rem;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    border: none;
-    border-radius: 0.5rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.login-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-}
-
-.error-message {
-    background: #fee2e2;
-    color: #991b1b;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
-    border-left: 4px solid #ef4444;
-}
-
-.success-message {
-    background: #dcfce7;
-    color: #166534;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
-    border-left: 4px solid #10b981;
-}
-
-.login-footer {
-    text-align: center;
-    margin-top: 2rem;
-    color: #6b7280;
-    font-size: 0.875rem;
-}
-
-.demo-credentials {
-    background: #fef3c7;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    margin-top: 1.5rem;
-    border-left: 4px solid #f59e0b;
-}
-
-.demo-credentials h3 {
-    margin: 0 0 0.5rem 0;
-    color: #92400e;
-    font-size: 0.9rem;
-}
-
-.demo-credentials p {
-    margin: 0.25rem 0;
-    color: #78350f;
-    font-size: 0.85rem;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiques - RowTech</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-lg);
+            margin: var(--spacing-xl) 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, var(--dark-light) 0%, var(--dark-lighter) 100%);
+            border-radius: 16px;
+            padding: var(--spacing-lg);
+            border: 2px solid var(--border);
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--primary);
+        }
+        
+        .stat-icon {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary-light);
+            margin-bottom: var(--spacing-xs);
+            letter-spacing: -0.02em;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .chart-section {
+            margin: var(--spacing-xl) 0;
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: var(--spacing-lg);
+            border: 2px solid var(--border);
+        }
+        
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-sm);
+            border-bottom: 2px solid var(--border);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: var(--spacing-xl);
+            margin: var(--spacing-xl) 0;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-muted);
+        }
+        
+        .export-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
+        }
+        
+        .export-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
+        }
+        
+        .actions-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+    </style>
 </head>
 <body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>Connexion</h1>
+            <p>Vue d'ensemble de l'entreprise RowTech</p>
+        </header>
 
-<div class="login-container">
-    <div class="login-box">
+        <body>
+            <div class="app-container">
+        	
+        
 
-        <div class="login-header">
-            <h1>🔐 Connexion</h1>
-            <p>Application de Gestion RH - RowTech</p>
+        <div class="content" style="max-width: 500px; margin: 60px auto;">
+            
+            <!-- Messages d'erreur -->
+            <% if ("identifiants_invalides".equals(erreur)) { %>
+                <div class="alert alert-danger">
+                    ❌ Identifiants invalides. Veuillez réessayer.
+                </div>
+            <% } else if ("champs_vides".equals(erreur)) { %>
+                <div class="alert alert-danger">
+                    ⚠️ Veuillez remplir tous les champs.
+                </div>
+            <% } else if ("non_connecte".equals(erreur)) { %>
+                <div class="alert alert-danger">
+                    🔒 Vous devez être connecté pour accéder à cette page.
+                </div>
+            <% } %>
+            
+            <!-- Message de succès inscription -->
+            <% if (succes != null) { %>
+                <div class="alert alert-success">
+                    ✅ <%= succes %>
+                </div>
+            <% } %>
+            
+            <!-- Message de succès -->
+            <% if ("deconnexion_ok".equals(message)) { %>
+                <div class="alert alert-success">
+                    ✅ Vous avez été déconnecté avec succès.
+                </div>
+            <% } %>
+
+            <!-- Formulaire de connexion -->
+            <div style="background: var(--dark-light); padding: 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+                <h2 style="text-align: center; color: var(--text-primary); margin-bottom: 30px;">
+                    Identifiez-vous
+                </h2>
+
+                <form action="<%= request.getContextPath() %>/auth" method="post">
+                    <div class="form-group">
+                        <label>Nom d'utilisateur</label>
+                        <input type="text" name="username" placeholder="Ex: admin" required autofocus>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Mot de passe</label>
+                        <input type="password" name="password" placeholder="••••••••" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">
+                        🔓 Se connecter
+                    </button>
+                </form>
+
+                <!-- Lien d'inscription -->
+                <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <p style="color: var(--text-muted); margin-bottom: 10px;">
+                        Vous êtes un nouvel employé ?
+                    </p>
+                    <a href="<%= request.getContextPath() %>/inscription" 
+                       style="color: var(--primary); text-decoration: none; font-weight: 600; font-size: 1.05rem;">
+                        📝 Créer un compte
+                    </a>
+                </div>
+
+                <!-- Comptes de test -->
+                <div style="margin-top: 30px; padding: 20px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                    <p style="font-weight: 600; color: var(--text-primary); margin-bottom: 10px;">
+                        📝 Comptes de test :
+                    </p>
+                    <ul style="color: var(--text-muted); font-size: 0.9rem; margin: 0; padding-left: 20px;">
+                        <li><strong>Admin :</strong> admin / admin123</li>
+                        <li><strong>Chef Dept :</strong> chef.dept / chef123</li>
+                        <li><strong>Chef Projet :</strong> chef.projet / chef123</li>
+                        <li><strong>Employé :</strong> employe1 / employe123</li>
+                    </ul>
+                </div>
+            </div>
         </div>
 
-        <%
-            String erreur = (String) request.getAttribute("erreur");
-            String message = request.getParameter("message");
-
-            if (erreur != null) {
-        %>
-            <div class="error-message">
-                <strong>⚠️ Erreur :</strong> <%= erreur %>
-            </div>
-        <%
-            }
-
-            if ("deconnecte".equals(message)) {
-        %>
-            <div class="success-message">
-                <strong>✓ Déconnexion réussie</strong><br>
-                Vous avez été déconnecté avec succès.
-            </div>
-        <%
-            }
-        %>
-
-        <form action="login" method="post">
-
-            <div class="form-group">
-                <label for="username">👤 Nom d'utilisateur</label>
-                <input type="text" id="username" name="username" required autofocus placeholder="Entrez votre nom d'utilisateur">
-            </div>
-
-            <div class="form-group">
-                <label for="password">🔑 Mot de passe</label>
-                <input type="password" id="password" name="password" required placeholder="Entrez votre mot de passe">
-            </div>
-
-            <button type="submit" class="login-button">
-                🚀 Se Connecter
-            </button>
-
-        </form>
-
-        <!-- Informations de démonstration -->
-        <div class="demo-credentials">
-            <h3>💡 Comptes de démonstration :</h3>
-            <p><strong>Admin :</strong> admin / admin123</p>
-            <p><strong>Chef Département :</strong> chef_dept / chef123</p>
-            <p><strong>Chef Projet :</strong> chef_proj / chef123</p>
-            <p><strong>Employé :</strong> employe / emp123</p>
-        </div>
-
-        <div class="login-footer">
-            <p>&copy; 2025 RowTech - Tous droits réservés</p>
-            <p>Pour toute assistance, contactez le service IT</p>
-        </div>
-
+        <footer>
+            <p>© 2025 RowTech</p>
+        </footer>
     </div>
-</div>
-
 </body>
 </html>

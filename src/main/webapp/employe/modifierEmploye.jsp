@@ -1,204 +1,288 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="com.rsv.model.Employe" %>
-<%@ page import="com.rsv.model.Departement" %>
-<%@ page import="com.rsv.model.User" %>
-<%@ page import="com.rsv.model.Role" %>
 <%@ page import="java.util.List" %>
+<%@ page import="com.rsv.model.Departement" %>
+<%@ page import="com.rsv.model.Employe" %>
+<%@ page import="com.rsv.model.Projet" %>
+<%@ page import="com.rsv.util.RoleHelper" %>
 <%
-    // Set page title and breadcrumb for header
-    request.setAttribute("pageTitle", "Modifier un Employé");
-    request.setAttribute("pageBreadcrumb", "Employés / Modifier");
-
+    List<Departement> listeDepartements = (List<Departement>) request.getAttribute("listeDepartements");
+    List<Projet> listeProjets = (List<Projet>) request.getAttribute("listeProjets");
     Employe employe = (Employe) request.getAttribute("employe");
-    List<Departement> departements = (List<Departement>) request.getAttribute("departements");
+    
+    // Récupérer les erreurs de validation s'il y en a
+    List<String> erreurs = (List<String>) request.getAttribute("erreurs");
+    
+    if (employe == null) {
+        response.sendRedirect(request.getContextPath() + "/employes?action=lister&erreur=employe_introuvable");
+        return;
+    }
 %>
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modifier un Employé - JEE RH</title>
-    <link rel="stylesheet" href="<%= request.getContextPath() %>/style.css">
+    <title>Ajouter un Employé - RowTech</title>
+    <link rel="stylesheet" href="<%= request.getContextPath() %>/css/style.css">
+    <script src="<%= request.getContextPath() %>/js/validation.js"></script>
 </head>
 <body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>👥 Ajouter un Employé</h1>
+            <p>RowTech - Gestion RH</p>
+        </header>
 
-<!-- Layout principal -->
-<div class="app-wrapper">
-
-    <!-- Menu latéral -->
-    <%@ include file="../includes/menu.jsp" %>
-
-    <!-- Contenu principal -->
-    <div class="main-content">
-
-        <!-- Header -->
-        <jsp:include page="/includes/header.jsp" />
-
-
-        <!-- Zone de contenu -->
-        <div class="content-wrapper fade-in">
-
-            <!-- Bouton retour -->
-            <div style="margin-bottom: 1.5rem;">
-                <a href="<%= request.getContextPath() %>/employes" class="btn btn-secondary">
-                    ◀️ Retour à la liste
+        <nav class="nav-menu">
+            <a href="<%= request.getContextPath() %>/accueil.jsp">🏠 Accueil</a>
+            
+            <% if (RoleHelper.canManageEmployes(session)) { %>
+                <a href="<%= request.getContextPath() %>/employes?action=lister" class="active">👥 Employés</a>
+            <% } %>
+            
+            <% if (RoleHelper.canManageDepartements(session)) { %>
+                <a href="<%= request.getContextPath() %>/departements?action=lister">🏛️ Départements</a>
+            <% } %>
+            
+            <% if (RoleHelper.canManageProjets(session)) { %>
+                <a href="<%= request.getContextPath() %>/projets?action=lister">📁 Projets</a>
+            <% } %>
+            
+            <a href="<%= request.getContextPath() %>/fichesDePaie?action=lister">💰 Fiches de Paie</a>
+            
+            <% if (RoleHelper.canViewStatistics(session)) { %>
+                <a href="<%= request.getContextPath() %>/statistiques?action=afficher">📊 Statistiques</a>
+            <% } %>
+            
+            
+                <a href="<%= request.getContextPath() %>/auth?action=logout" class="btn btn-danger" style="padding: 8px 16px;">
+                    🚪 Déconnexion
                 </a>
-            </div>
+            
+        </nav>
 
-            <% if (employe == null) { %>
-                <!-- Message d'erreur si employé non trouvé -->
-                <div class="card">
-                    <div style="padding: 3rem; text-align: center; color: #ef4444;">
-                        <div style="font-size: 1.5rem; margin-bottom: 1rem;">⚠️ Erreur</div>
-                        <div style="font-size: 1rem;">L'employé demandé n'a pas été trouvé.</div>
-                    </div>
-                    <div style="padding: 1rem;">
-                        <a href="<%= request.getContextPath() %>/employes" class="btn btn-secondary">
-                            ◀️ Retour à la liste
-                        </a>
-                    </div>
-                </div>
-            <% } else { %>
-                <!-- Formulaire de modification -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">✏️ Modifier l'Employé</h3>
-                    </div>
-
-                    <form action="<%= request.getContextPath() %>/employes" method="post">
-                        <input type="hidden" name="action" value="edit">
-                        <input type="hidden" name="id" value="<%= employe.getId() %>">
-
-                        <!-- Informations personnelles -->
-                        <div style="margin-bottom: 2rem;">
-                            <h4 style="color: #1f2937; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e5e7eb;">
-                                👤 Informations Personnelles
-                            </h4>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label class="form-label">Nom <span style="color: #ef4444;">*</span></label>
-                                    <input type="text" name="nom" class="form-control" required
-                                           value="<%= employe.getNom() %>" placeholder="Entrez le nom">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Prénom <span style="color: #ef4444;">*</span></label>
-                                    <input type="text" name="prenom" class="form-control" required
-                                           value="<%= employe.getPrenom() %>" placeholder="Entrez le prénom">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Âge <span style="color: #ef4444;">*</span></label>
-                                    <input type="number" name="age" class="form-control" required min="18" max="70"
-                                           value="<%= employe.getAge() %>" placeholder="Ex: 30">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Adresse <span style="color: #ef4444;">*</span></label>
-                                    <input type="text" name="adresse" class="form-control" required
-                                           value="<%= employe.getAdresse() != null ? employe.getAdresse() : "" %>"
-                                           placeholder="Ex: 123 Rue de Paris, 75001 Paris">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Informations professionnelles -->
-                        <div style="margin-bottom: 2rem;">
-                            <h4 style="color: #1f2937; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e5e7eb;">
-                                💼 Informations Professionnelles
-                            </h4>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label class="form-label">Type de Contrat <span style="color: #ef4444;">*</span></label>
-                                    <select name="typeContrat" class="form-control" required>
-                                        <option value="">-- Sélectionner --</option>
-                                        <option value="CDI" <%= "CDI".equals(employe.getTypeContrat()) ? "selected" : "" %>>CDI</option>
-                                        <option value="CDD" <%= "CDD".equals(employe.getTypeContrat()) ? "selected" : "" %>>CDD</option>
-                                        <option value="Stage" <%= "Stage".equals(employe.getTypeContrat()) ? "selected" : "" %>>Stage</option>
-                                        <option value="Alternance" <%= "Alternance".equals(employe.getTypeContrat()) ? "selected" : "" %>>Alternance</option>
-                                        <option value="Freelance" <%= "Freelance".equals(employe.getTypeContrat()) ? "selected" : "" %>>Freelance</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Ancienneté (années) <span style="color: #ef4444;">*</span></label>
-                                    <input type="number" name="anciennete" class="form-control" required min="0" max="50"
-                                           value="<%= employe.getAnciennete() %>" placeholder="Ex: 5">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Grade</label>
-                                    <select name="grade" class="form-control">
-                                        <option value="">-- Sélectionner --</option>
-                                        <option value="Junior" <%= "Junior".equals(employe.getGrade()) ? "selected" : "" %>>Junior</option>
-                                        <option value="Intermédiaire" <%= "Intermédiaire".equals(employe.getGrade()) ? "selected" : "" %>>Intermédiaire</option>
-                                        <option value="Senior" <%= "Senior".equals(employe.getGrade()) ? "selected" : "" %>>Senior</option>
-                                        <option value="Expert" <%= "Expert".equals(employe.getGrade()) ? "selected" : "" %>>Expert</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Poste <span style="color: #ef4444;">*</span></label>
-                                    <input type="text" name="poste" class="form-control" required
-                                           value="<%= employe.getPoste() != null ? employe.getPoste() : "" %>"
-                                           placeholder="Ex: Développeur Full-Stack">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Matricule <span style="color: #ef4444;">*</span></label>
-                                    <input type="number" name="matricule" class="form-control" required
-                                           value="<%= employe.getMatricule() %>" placeholder="Ex: 1001">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Statut Cadre</label>
-                                    <select name="statutCadre" class="form-control">
-                                        <option value="false" <%= !employe.isStatutCadre() ? "selected" : "" %>>Non</option>
-                                        <option value="true" <%= employe.isStatutCadre() ? "selected" : "" %>>Oui</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Département</label>
-                                    <select name="departementId" class="form-control">
-                                        <option value="">-- Aucun département --</option>
-                                        <%
-                                            if (departements != null) {
-                                                for (Departement dept : departements) {
-                                                    boolean isSelected = (employe.getDepartementId() != null &&
-                                                                         employe.getDepartementId() == dept.getId());
-                                        %>
-                                            <option value="<%= dept.getId() %>" <%= isSelected ? "selected" : "" %>>
-                                                <%= dept.getNom() %>
-                                            </option>
-                                        <%
-                                                }
-                                            }
-                                        %>
-                                    </select>
-                                    <small style="color: #6b7280; font-size: 0.875rem;">Sélectionnez un département pour affecter l'employé</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Boutons d'action -->
-                        <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 1.5rem; border-top: 2px solid #e5e7eb;">
-                            <a href="<%= request.getContextPath() %>/employes" class="btn btn-secondary">
-                                Annuler
-                            </a>
-                            <button type="submit" class="btn btn-success">
-                                💾 Enregistrer les Modifications
-                            </button>
-                        </div>
-                    </form>
+            <!-- Affichage des erreurs de validation -->
+            <% if (erreurs != null && !erreurs.isEmpty()) { %>
+                <div class="alert alert-danger" style="margin-bottom: 20px;">
+                    <strong>⚠️ Erreurs de validation :</strong>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <% for (String erreur : erreurs) { %>
+                            <li><%= erreur %></li>
+                        <% } %>
+                    </ul>
                 </div>
             <% } %>
 
+            <!-- Formulaire -->
+            <form id="formEmploye" action="<%= request.getContextPath() %>/employes" method="post" 
+                  style="max-width: 800px; margin: 20px auto;" onsubmit="return validerFormulaireEmploye(this)">
+                
+                <input type="hidden" name="action" value="modifier">
+                <input type="hidden" name="id" value="<%= employe.getId() %>">
+
+                <!-- Informations personnelles -->
+                <fieldset style="border: 1px solid var(--border); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <legend style="color: var(--text-primary); font-weight: 600; padding: 0 10px;"> Informations personnelles</legend>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Nom *</label>
+                            <input type="text" name="nom" 
+                                   value="<%= employe.getNom() %>" 
+                                   placeholder="Dupont"
+                                   required>
+                            <small style="color: var(--text-muted); font-size: 0.8rem;">
+                                Seulement des lettres, espaces, tirets et apostrophes
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Prénom *</label>
+                            <input type="text" name="prenom" 
+                                   value="<%= employe.getPrenom() %>" 
+                                   placeholder="Jean"
+                                   required>
+                            <small style="color: var(--text-muted); font-size: 0.8rem;">
+                                Seulement des lettres, espaces, tirets et apostrophes
+                            </small>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" name="email" 
+                                   value="<%= employe.getEmail() %>" 
+                                   placeholder="jean.dupont@example.com"
+                                   required>
+                            <small style="color: var(--text-muted); font-size: 0.8rem;">
+                                Format : exemple@domaine.com
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Téléphone</label>
+                            <input type="text" name="telephone" 
+                                   value="<%= employe.getTelephone() != null ? employe.getTelephone() : "" %>" 
+                                   placeholder="+33 1 23 45 67 89">
+                            <small style="color: var(--text-muted); font-size: 0.8rem;">
+                                Au moins 10 chiffres
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Adresse</label>
+                        <textarea name="adresse" rows="2" 
+                                  placeholder="12 rue de la République, 75001 Paris"><%= employe.getAdresse() != null ? employe.getAdresse() : "" %></textarea>
+                    </div>
+                </fieldset>
+
+                <!-- Informations professionnelles -->
+                <fieldset style="border: 1px solid var(--border); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <legend style="color: var(--text-primary); font-weight: 600; padding: 0 10px;"> Informations professionnelles</legend>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Matricule * (non modifiable)</label>
+                            <input type="text" name="matricule" 
+                                   value="<%= employe.getMatricule() %>" 
+                                   readonly
+                                   style="background-color: var(--dark-light); cursor: not-allowed;"
+                                   required>
+                            <small style="color: var(--text-muted); font-size: 0.8rem;">
+                                Le matricule ne peut pas être modifié
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Poste *</label>
+                            <input type="text" name="poste" 
+                                   value="<%= employe.getPoste() %>" 
+                                   placeholder="Développeur Java"
+                                   required>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Grade *</label>
+                            <select name="grade" required>
+                                <option value="">-- Sélectionner un grade --</option>
+                                <option value="JUNIOR" <%= "JUNIOR".equals(employe.getGrade()) ? "selected" : "" %>>Junior</option>
+                                <option value="CONFIRME" <%= "CONFIRME".equals(employe.getGrade()) ? "selected" : "" %>>Confirmé</option>
+                                <option value="SENIOR" <%= "SENIOR".equals(employe.getGrade()) ? "selected" : "" %>>Senior</option>
+                                <option value="EXPERT" <%= "EXPERT".equals(employe.getGrade()) ? "selected" : "" %>>Expert</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Salaire (€) *</label>
+                            <input type="number" name="salaire" step="0.01" 
+                                   value="<%= employe.getSalaire() %>" 
+                                   placeholder="3500.00"
+                                   required>
+                            <small style="color: var(--text-muted); font-size: 0.8rem;">
+                                Entre 500€ et 1 000 000€
+                            </small>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Date d'embauche *</label>
+                            <input type="date" name="dateEmbauche" 
+                                   value="<%= employe.getDateEmbauche() != null ? employe.getDateEmbauche().toString() : "" %>"
+                                   required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Département</label>
+                            <select name="departementId">
+                                <option value="">-- Aucun département --</option>
+                                <% if (listeDepartements != null) {
+                                    for (Departement dept : listeDepartements) { %>
+                                        <option value="<%= dept.getId() %>" 
+                                                <%= employe.getDepartement() != null && employe.getDepartement().getId().equals(dept.getId()) ? "selected" : "" %>>
+                                            <%= dept.getNom() %>
+                                        </option>
+                                <%  }
+                                } %>
+                            </select>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- NOUVELLE SECTION: Affectation aux projets -->
+                <fieldset style="border: 1px solid var(--border); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <legend style="color: var(--text-primary); font-weight: 600; padding: 0 10px;"> Affecter à des projets</legend>
+                    
+                    <% if (listeProjets != null && !listeProjets.isEmpty()) { %>
+                        <div style="margin-bottom: 15px; padding: 15px; background: rgba(99, 102, 241, 0.1); border-left: 4px solid var(--primary); border-radius: 8px;">
+                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">
+                                💡 Cochez les projets auxquels vous souhaitez affecter cet employé. 
+                                Les modifications seront appliquées lors de l'enregistrement.
+                            </p>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+                            <% for (Projet projet : listeProjets) { 
+                                
+                                boolean estAffecte = employe.getProjets() != null && 
+                                                     employe.getProjets().stream()
+                                                     .anyMatch(p -> p.getId().equals(projet.getId()));
+                            %>
+                                <div style="padding: 15px; background: var(--dark-light); border-radius: 8px; border: 2px solid <%= estAffecte ? "var(--primary)" : "var(--border)" %>;">
+                                    <label style="display: flex; align-items: start; cursor: pointer; gap: 12px;">
+                                        <input type="checkbox" 
+                                               name="projetIds" 
+                                               value="<%= projet.getId() %>" 
+                                               <%= estAffecte ? "checked" : "" %>
+                                               style="margin-top: 3px; width: 18px; height: 18px; cursor: pointer;">
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 5px;">
+                                                <%= projet.getNom() %>
+                                            </div>
+                                            
+                                        </div>
+                                    </label>
+                                </div>
+                            <% } %>
+                        </div>
+                    <% } else { %>
+                        <div style="text-align: center; padding: 40px; background: var(--dark-light); border-radius: 12px;">
+                            <div style="font-size: 3rem; margin-bottom: 15px;">📁</div>
+                            <p style="color: var(--text-muted); margin: 0;">
+                                Aucun projet disponible. Créez d'abord des projets pour pouvoir y affecter des employés.
+                            </p>
+                        </div>
+                    <% } %>
+                </fieldset>
+
+                <!-- Boutons d'action -->
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 30px;">
+                    <button type="submit" class="btn btn-primary">
+                         Enregistrer les modifications
+                    </button>
+                    <a href="<%= request.getContextPath() %>/employes?action=lister" class="btn btn-secondary">
+                        ❌ Annuler
+                    </a>
+                </div>
+            </form>
         </div>
 
+        <footer>
+            <p>© 2025 RowTech</p>
+        </footer>
     </div>
 
-</div>
-
+    <!-- Script pour activer la validation en temps réel -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('formEmploye');
+            if (typeof activerValidationTempsReel === 'function') {
+                activerValidationTempsReel(form);
+            }
+        });
+    </script>
 </body>
 </html>
